@@ -449,3 +449,7 @@ if lot_unfilled_list:
         rf"{user_path}\Desktop\計画外移送登録データ_ロット記入なし（補填失敗）.xlsx",
         index=False,
     )
+
+
+
+print("処理が完了しました。")

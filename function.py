@@ -5,6 +5,10 @@ from datetime import datetime, timedelta
 import jaconv
 import re
 
+from typing import List, Tuple, Optional, Union, Any, Dict
+from openpyxl.workbook.workbook import Workbook as OpenpyxlWorkbook
+from openpyxl.worksheet.worksheet import Worksheet as OpenpyxlWorksheet
+
 
 
 
@@ -107,12 +111,12 @@ def load_target_hokokusho_files(mapping, reference_folder_path, extensions):
         '書類名' と 'ヘッダー行' が含まれる辞書
     reference_folder_path : str
         ファイル検索の基準フォルダ
-    extensions : list of str
+    extensions : list[str]
         検索するファイル拡張子リスト（例: ["xlsx", "xls", "csv"]）
 
     Returns
     -------
-    results : list of tuples
+    results : list[tuples]
         各要素は (target_df, target_wb, target_ws, create_temp_df)
     """
 
@@ -146,7 +150,7 @@ def load_target_hokokusho_files(mapping, reference_folder_path, extensions):
     return results
 
 
-def load_excel_like(target_file, skip_rows):
+def load_excel_like(target_file: str, skip_rows: int) -> Tuple[pd.DataFrame, OpenpyxlWorkbook, OpenpyxlWorksheet]:
     """
     ExcelやCSVファイルを読み込み、
     DataFrame, Workbook, Worksheet の3つを返す。
@@ -189,7 +193,7 @@ def load_excel_like(target_file, skip_rows):
         raise ValueError(f"未対応の拡張子: {ext}")
 
 
-def load_csv_safe(path, skip_rows=0):
+def load_csv_safe(path: str, skip_rows: int) -> pd.DataFrame:
     """
     CSV/TSVファイルを確実に読み込む。
     区切り文字やエンコーディングを自動判定。
@@ -227,7 +231,7 @@ def load_csv_safe(path, skip_rows=0):
     raise ValueError(f"すべてのエンコーディングで読み込み失敗: {path}")
 
 
-def dataframe_to_workbook(df: pd.DataFrame):
+def dataframe_to_workbook(df: pd.DataFrame) -> Tuple[OpenpyxlWorkbook, OpenpyxlWorksheet]:
     """
     DataFrameをopenpyxlのWorkbookオブジェクトに変換する。
     CSVでもxls偽装ファイルでもセル参照を可能にするため。
@@ -287,7 +291,7 @@ def calc_formula(df: pd.DataFrame, val: str) -> pd.Series:
             return pd.Series([None] * len(df))
 
 
-def split_kikaku_series(df):
+def split_kikaku_series(df: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
     """
     規格列を分割して 4桁ロット、入数、合 の Series を返す関数。
 
@@ -338,7 +342,7 @@ def split_kikaku_series(df):
     return count_series, total_series, lot_series
 
 
-def get_cell_value_by_cell_reference(input_ws, cell_ref: str) -> str:
+def get_cell_value_by_cell_reference(input_ws: Any, cell_ref: str) -> str:
     """
     セル番号で値を取得する関数
 
@@ -369,7 +373,7 @@ def get_cell_value_by_cell_reference(input_ws, cell_ref: str) -> str:
         return cell_ref
 
 
-def get_cell_value_by_column_reference(i, target_df, val):
+def get_cell_value_by_column_reference(i: int, target_df: pd.DataFrame, val: str) -> Optional[str]:
     """
     指定されたDataFrame列（val）から、i行目の値を取得して返す関数。
     key: ログ出力用の項目名
@@ -394,7 +398,7 @@ def get_cell_value_by_column_reference(i, target_df, val):
         return None
 
 
-def process_date_value(val, type):
+def process_date_value(val: Union[int, float, datetime, pd.Timestamp, str, pd.Series], type: int) -> Union[pd.Series, Optional[str]]:
     """
     日付形式を統一する関数。Seriesが渡された場合は再帰的に処理する。
 
@@ -456,7 +460,7 @@ def process_date_value(val, type):
     return None
 
 
-def make_lot_no(lot_4digits, exp_date=None):
+def make_lot_no(lot_4digits: Any, exp_date: Optional[Union[datetime, pd.Timestamp, str]] = None) -> Optional[str]:
     """
     4桁ロットと賞味期限（exp_date）から最終的なロットNoを作成する関数。
 
@@ -520,8 +524,13 @@ def make_lot_no(lot_4digits, exp_date=None):
 
 # 報告書データフレームと依頼書で製品の突合を行う関数
 def fill_lot_No(
-    i, input_ws, start_row, folder_or_filename, vals_for_lot_no, report_df_narrowed
-):
+    i: int,
+    input_ws: Any,
+    start_row: int,
+    folder_or_filename: str,
+    vals_for_lot_no: Dict[str, Any],
+    report_df_narrowed: pd.DataFrame,
+) -> Union[str, pd.Series]:
     # 突合に必要な情報：品番、賞味期限、総パック数
     # ロットNo作成に必要な情報：賞味期限、規格
 
@@ -594,7 +603,7 @@ def fill_lot_No(
 
 
 # 賞味期限の形式を統一する関数
-def unify_date_format(lot_no, exp_date_lot_no=None):
+def unify_date_format(lot_no: Any, exp_date_lot_no: Optional[Any] = None) -> Optional[str]:
     print(f"賞味期限の形式を統一します。ロットNo:{lot_no}, 賞味期限:{exp_date_lot_no}")
 
     if lot_no is None or pd.isna(lot_no):
@@ -700,7 +709,7 @@ def unify_date_format(lot_no, exp_date_lot_no=None):
         return s
 
 
-def add_prefix(x):
+def add_prefix(x: Any) -> Any:
     if pd.isna(x):
         return x
     s = str(x).strip()
@@ -716,7 +725,7 @@ def add_prefix(x):
 
 
 # 数字として解釈できる行だけTrueにするマスク
-def is_number(x):
+def is_number(x: Any) -> Union[bool, pd.Series]:
     if isinstance(x, pd.Series):
         return x.apply(is_number)
 
@@ -732,7 +741,7 @@ def is_number(x):
         return False
 
 
-def branching_constants(key, the_warehouse, all_mapping_dicts):
+def branching_constants(key: str, the_warehouse: str, all_mapping_dicts: Dict[str, Dict[str, Any]]) -> Optional[Any]:
     """value: マッピング表の値
     file_or_folder_name: 依頼書のファイル名またはフォルダ名
 

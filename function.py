@@ -1,46 +1,22 @@
 import os
 import pandas as pd
 import openpyxl
-from openpyxl.utils.datetime import from_excel
 from datetime import datetime, timedelta
-import math
 import jaconv
 import re
-import openpyxl
-import os
-import pandas as pd
-import copy
-import pandas as pd
-import numpy as np
-from openpyxl.utils import get_column_letter
-
-import pandas as pd
-import re
-
-
-import pandas as pd
-
-import pandas as pd
-import openpyxl
-import csv
 
 
 
-import pandas as pd
-import openpyxl
 
-import pandas as pd
 
-import pandas as pd
-import openpyxl
+
+
+
 from openpyxl import Workbook
-import xlrd
-import csv
 
 
-import os
 import glob
-import pandas as pd
+
 
 def load_target_iraisho_files(mapping, reference_folder_path, extensions):
     """
@@ -65,7 +41,7 @@ def load_target_iraisho_files(mapping, reference_folder_path, extensions):
         各ファイルについて処理後の DataFrame と対応する Workbook, Worksheet のタプルを格納したリスト。
     """
 
-    file_name = mapping['書類名']
+    file_name = mapping["書類名"]
     target_files = []
 
     # --- ファイル検索 ---
@@ -93,10 +69,14 @@ def load_target_iraisho_files(mapping, reference_folder_path, extensions):
             if item_code_col == "商品コード":
                 hinban = "商品ｺｰﾄﾞ"
                 if hinban not in target_df.columns:
-                    print(f"⚠ '{item_code_col}'列も'{hinban}'列も参照中の書類に存在しません → {target_file}")
+                    print(
+                        f"⚠ '{item_code_col}'列も'{hinban}'列も参照中の書類に存在しません → {target_file}"
+                    )
                     continue
                 else:
-                    print(f"⚠ '{item_code_col}'列が存在しないため、'{hinban}'列を代わりに使用します → {target_file}")  
+                    print(
+                        f"⚠ '{item_code_col}'列が存在しないため、'{hinban}'列を代わりに使用します → {target_file}"
+                    )
 
         valid_mask = target_df[item_code_col].apply(is_number)
 
@@ -115,10 +95,6 @@ def load_target_iraisho_files(mapping, reference_folder_path, extensions):
 
 
 
-import os
-import glob
-import pandas as pd
-from IPython.display import display
 
 def load_target_hokokusho_files(mapping, reference_folder_path, extensions):
     """
@@ -140,7 +116,7 @@ def load_target_hokokusho_files(mapping, reference_folder_path, extensions):
         各要素は (target_df, target_wb, target_ws, create_temp_df)
     """
 
-    file_name = mapping['書類名']
+    file_name = mapping["書類名"]
     target_files = []
 
     # --- ファイル検索 ---
@@ -170,13 +146,12 @@ def load_target_hokokusho_files(mapping, reference_folder_path, extensions):
     return results
 
 
-
 def load_excel_like(target_file, skip_rows):
     """
     ExcelやCSVファイルを読み込み、
     DataFrame, Workbook, Worksheet の3つを返す。
     """
-    ext = target_file.lower().split('.')[-1]
+    ext = target_file.lower().split(".")[-1]
 
     # === xlsx ===
     if ext == "xlsx":
@@ -188,7 +163,7 @@ def load_excel_like(target_file, skip_rows):
     # === xls ===
     elif ext == "xls":
         try:
-            import xlrd
+
             df = pd.read_excel(target_file, skiprows=skip_rows, engine="xlrd")
             wb, ws = dataframe_to_workbook(df)
             return df, wb, ws
@@ -214,7 +189,6 @@ def load_excel_like(target_file, skip_rows):
         raise ValueError(f"未対応の拡張子: {ext}")
 
 
-
 def load_csv_safe(path, skip_rows=0):
     """
     CSV/TSVファイルを確実に読み込む。
@@ -237,7 +211,9 @@ def load_csv_safe(path, skip_rows=0):
                 sep = ","
 
             # 読み込み実行
-            df = pd.read_csv(path, encoding=enc, skiprows=skip_rows, sep=sep, engine="python")
+            df = pd.read_csv(
+                path, encoding=enc, skiprows=skip_rows, sep=sep, engine="python"
+            )
 
             # --- カラム名がタブ混入している場合の補正 ---
             df.columns = [c.replace("\t", "").strip() for c in df.columns]
@@ -249,10 +225,6 @@ def load_csv_safe(path, skip_rows=0):
             print(f"失敗: {enc} -> {type(e).__name__}")
 
     raise ValueError(f"すべてのエンコーディングで読み込み失敗: {path}")
-
-
-
-
 
 
 def dataframe_to_workbook(df: pd.DataFrame):
@@ -312,8 +284,7 @@ def calc_formula(df: pd.DataFrame, val: str) -> pd.Series:
             return df[val]
         else:
             # print(f"指定列が存在しません: {val}")
-            return pd.Series([None]*len(df))
-
+            return pd.Series([None] * len(df))
 
 
 def split_kikaku_series(df):
@@ -365,7 +336,6 @@ def split_kikaku_series(df):
     total_series = pd.Series(total_list, index=df.index)
 
     return count_series, total_series, lot_series
-
 
 
 def get_cell_value_by_cell_reference(input_ws, cell_ref: str) -> str:
@@ -424,7 +394,6 @@ def get_cell_value_by_column_reference(i, target_df, val):
         return None
 
 
-
 def process_date_value(val, type):
     """
     日付形式を統一する関数。Seriesが渡された場合は再帰的に処理する。
@@ -463,15 +432,19 @@ def process_date_value(val, type):
         s = s.replace("年", "/").replace("月", "/").replace("日", "")
         s = re.sub(r"（.*?）|\(.*?\)", "", s).strip()
 
-
         # 文字列が4桁ロットかどうか判定
         if s.isdigit() and 1000 <= int(s) <= 9999:
             return s
 
         # 日付フォーマットを順に試す
-        for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S",
-                    "%Y/%m/%d", "%Y/%m/%d %H:%M:%S",
-                    "%Y%m%d", "%Y.%m.%d"):
+        for fmt in (
+            "%Y-%m-%d",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y/%m/%d",
+            "%Y/%m/%d %H:%M:%S",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        ):
             try:
                 parsed = datetime.strptime(s, fmt)
                 return parsed.strftime(fmt_out)
@@ -481,9 +454,6 @@ def process_date_value(val, type):
 
     # その他の型は None
     return None
-
-
-
 
 
 def make_lot_no(lot_4digits, exp_date=None):
@@ -503,7 +473,7 @@ def make_lot_no(lot_4digits, exp_date=None):
         # 賞味期限がなければNoneを返す
         if exp_date is None:
             return None
-        
+
         # 賞味期限があればYYYYMMDD形式に
         if isinstance(exp_date, (datetime, pd.Timestamp)):
             date_str = exp_date.strftime("%Y%m%d")
@@ -521,26 +491,37 @@ def make_lot_no(lot_4digits, exp_date=None):
         else:
             date_str = re.sub(r"\D", "", str(exp_date))
         lot_no = f"{date_str}-{lot_str}"
-    
+
     # 賞味期限がなければNoneを返す
     else:
         lot_no = None
 
     if lot_no is not None:
         # 全角→半角に変換（数字・ハイフン）
-        lot_no = lot_no.translate(str.maketrans({
-            "０": "0", "１": "1", "２": "2", "３": "3", "４": "4",
-            "５": "5", "６": "6", "７": "7", "８": "8", "９": "9"
-        }))
-
+        lot_no = lot_no.translate(
+            str.maketrans(
+                {
+                    "０": "0",
+                    "１": "1",
+                    "２": "2",
+                    "３": "3",
+                    "４": "4",
+                    "５": "5",
+                    "６": "6",
+                    "７": "7",
+                    "８": "8",
+                    "９": "9",
+                }
+            )
+        )
 
     return lot_no
 
 
-
-
 # 報告書データフレームと依頼書で製品の突合を行う関数
-def fill_lot_No(i, input_ws, start_row, folder_or_filename, vals_for_lot_no, report_df_narrowed):
+def fill_lot_No(
+    i, input_ws, start_row, folder_or_filename, vals_for_lot_no, report_df_narrowed
+):
     # 突合に必要な情報：品番、賞味期限、総パック数
     # ロットNo作成に必要な情報：賞味期限、規格
 
@@ -550,8 +531,6 @@ def fill_lot_No(i, input_ws, start_row, folder_or_filename, vals_for_lot_no, rep
     report_df_narrowed["品番"] = report_df_narrowed["品番"].astype(str)
     report_df_narrowed["移送数"] = report_df_narrowed["移送数"].astype(str)
 
-
-    
     # 1. 突合に必要な依頼書からの情報を整理する
 
     # 突合条件の一覧、Noneのキーは除外
@@ -561,14 +540,12 @@ def fill_lot_No(i, input_ws, start_row, folder_or_filename, vals_for_lot_no, rep
             "品番": vals_for_lot_no["品番"],
             # "賞味期限": vals_for_lot_no["賞味期限"],
             # "渡し先名": vals_for_lot_no["渡し先名"],
-            "移送数": vals_for_lot_no["移送数"]
+            "移送数": vals_for_lot_no["移送数"],
         }.items()
-        if v is not None and not pd.isna(v) 
+        if v is not None and not pd.isna(v)
     }
 
     print(f"次の依頼書データで突合を行います: {dict_from_iraisho}")
-
-
 
     # 2. 報告書データフレームからの商品特定
     cond = pd.Series(True, index=report_df_narrowed.index)
@@ -578,9 +555,10 @@ def fill_lot_No(i, input_ws, start_row, folder_or_filename, vals_for_lot_no, rep
             continue
 
         # 文字列に揃えて比較（余計な空白も削除）
-        cond = cond & (report_df_narrowed[key].astype(str).str.strip() == str(val).strip())
-    matched = report_df_narrowed[cond] # ヒットした行を格納。列は特にカットされない
-
+        cond = cond & (
+            report_df_narrowed[key].astype(str).str.strip() == str(val).strip()
+        )
+    matched = report_df_narrowed[cond]  # ヒットした行を格納。列は特にカットされない
 
     # 【cond &= ...の問題について】
 
@@ -603,23 +581,20 @@ def fill_lot_No(i, input_ws, start_row, folder_or_filename, vals_for_lot_no, rep
     # matched = report_df_narrowed[cond]    で cond は True なので、report_df_narrowed 全体が matched に入ってしまう。
     # だから    if matched.empty:   に流れない。
 
-
     print(f"ロットNo構築結果: \n{matched}")
 
     if matched.empty:
         print("該当商品は報告書データに存在しません")
         return "報告書データに該当商品なし"
     else:
-        return matched["ロットNo"] # matched DataFrame の "ロットNo" 列だけを抜き出した pandas.Series
+        return matched[
+            "ロットNo"
+        ]  # matched DataFrame の "ロットNo" 列だけを抜き出した pandas.Series
         # 該当行すべてのデータフレームが返ってくる。つまり品番がヒットしたものはすべて転記される
-
-
-
 
 
 # 賞味期限の形式を統一する関数
 def unify_date_format(lot_no, exp_date_lot_no=None):
-
     print(f"賞味期限の形式を統一します。ロットNo:{lot_no}, 賞味期限:{exp_date_lot_no}")
 
     if lot_no is None or pd.isna(lot_no):
@@ -629,7 +604,10 @@ def unify_date_format(lot_no, exp_date_lot_no=None):
                 exp_date_str = exp_date_lot_no.strftime("%Y%m%d")
 
             # さらにこの場合でexp_date_lot_noが数字５桁ならExcelシリアル値として変換
-            elif isinstance(exp_date_lot_no, (int, float)) and 10000 <= exp_date_lot_no < 100000:
+            elif (
+                isinstance(exp_date_lot_no, (int, float))
+                and 10000 <= exp_date_lot_no < 100000
+            ):
                 dt = datetime(1899, 12, 30) + timedelta(days=exp_date_lot_no)
                 exp_date_str = dt.strftime("%Y%m%d")
 
@@ -640,7 +618,6 @@ def unify_date_format(lot_no, exp_date_lot_no=None):
             return exp_date_str
         else:
             return None
-    
 
     # ハイフンならスキップ
     if str(lot_no).strip() == "-":
@@ -658,14 +635,11 @@ def unify_date_format(lot_no, exp_date_lot_no=None):
         # YYYY-MM-DD HH:MM:SS形式になるのでYYYYMMDD形式に変換して返す
         return dt.strftime("%Y%m%d")
 
-
-
     # 以降、加工のため文字列として扱う
     s = str(lot_no).strip()
     # 小数点付き数字は整数に変換（例: 20260301.0 → 20260301）
     if re.fullmatch(r"\d+\.0+", s):
         s = s.split(".")[0]
-
 
     # 4桁ロットの場合、依頼書の賞味期限からロットNoを結合して返す。なのでこの場合報告書データフレームを参照することはない
     if re.fullmatch(r"\d{4}", s):
@@ -679,18 +653,29 @@ def unify_date_format(lot_no, exp_date_lot_no=None):
                 exp_date_str = re.sub(r"\D", "", exp_date_str)
 
             print(f"賞味期限{exp_date_str}の整形を行いました。")
-            
+
             combined = f"{exp_date_str}-{s}"
             # 全角→半角に変換（数字・ハイフン）
-            combined = combined.translate(str.maketrans({
-                "０": "0", "１": "1", "２": "2", "３": "3", "４": "4",
-                "５": "5", "６": "6", "７": "7", "８": "8", "９": "9",
-                "－": "-"
-            }))
+            combined = combined.translate(
+                str.maketrans(
+                    {
+                        "０": "0",
+                        "１": "1",
+                        "２": "2",
+                        "３": "3",
+                        "４": "4",
+                        "５": "5",
+                        "６": "6",
+                        "７": "7",
+                        "８": "8",
+                        "９": "9",
+                        "－": "-",
+                    }
+                )
+            )
             return combined
         else:
             return s  # 賞味期限が指定されていない場合
-        
 
     try:
         if "年" in s:
@@ -713,9 +698,7 @@ def unify_date_format(lot_no, exp_date_lot_no=None):
     except Exception as e:
         print(f"⚠️ パース失敗: {s} ({e})")
         return s
-    
 
-    
 
 def add_prefix(x):
     if pd.isna(x):
@@ -728,10 +711,8 @@ def add_prefix(x):
         return "36" + s
     else:
         return s
-    
+
     # valid_maskの操作と一部重複する？
-
-
 
 
 # 数字として解釈できる行だけTrueにするマスク
@@ -751,28 +732,26 @@ def is_number(x):
         return False
 
 
-
-
-
 def branching_constants(key, the_warehouse, all_mapping_dicts):
-    '''value: マッピング表の値
+    """value: マッピング表の値
     file_or_folder_name: 依頼書のファイル名またはフォルダ名
 
     valueが（固定の値）＋「固定」の形式なら、（固定の値）を返す
     そうでなければNoneを返す
-    '''
-
+    """
 
     if key == "工場CD":
         if "第一" == the_warehouse:
             return all_mapping_dicts["daiichi_row"]["工場CD"]
         elif "京都" == the_warehouse:
-            return all_mapping_dicts["kyoto_gyomu_row"]["工場CD"] # 依頼書では業務・通販・ヨシケイの区別を行わないのでどれでもよい
-        
+            return all_mapping_dicts["kyoto_gyomu_row"][
+                "工場CD"
+            ]  # 依頼書では業務・通販・ヨシケイの区別を行わないのでどれでもよい
+
     elif key == "元保管場所CD":
         if "第一" == the_warehouse:
             return all_mapping_dicts["daiichi_row"]["元保管場所CD"]
         elif "京都" == the_warehouse:
             return all_mapping_dicts["kyoto_gyomu_row"]["元保管場所CD"]
-    
+
     print(f"⚠️ {key}の固定値が設定されませんでした")

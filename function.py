@@ -41,6 +41,17 @@ import csv
 import os
 import glob
 import pandas as pd
+from typing import List, Tuple, Optional, Union, Any, Dict
+from openpyxl.workbook.workbook import Workbook as OpenpyxlWorkbook
+from openpyxl.worksheet.worksheet import Worksheet as OpenpyxlWorksheet
+
+
+import os
+import glob
+import pandas as pd
+from IPython.display import display
+
+
 
 def load_target_iraisho_files(mapping, reference_folder_path, extensions):
     """
@@ -71,7 +82,8 @@ def load_target_iraisho_files(mapping, reference_folder_path, extensions):
     # --- ファイル検索 ---
     for ext in extensions:
         file_pattern = os.path.join(reference_folder_path, f"*{file_name}*.{ext}")
-        target_files.extend(glob.glob(file_pattern))
+        matched_files = glob.glob(file_pattern)
+        target_files.extend(matched_files)
 
     print(f"検索結果: {target_files}")
 
@@ -84,7 +96,9 @@ def load_target_iraisho_files(mapping, reference_folder_path, extensions):
 
     # --- 各ファイル処理 ---
     for target_file in target_files:
-        target_df, target_wb, target_ws = load_excel_like(target_file, skip_rows)
+        basename = os.path.splitext(os.path.basename(target_file))[0]
+    
+        target_df, target_ws = load_excel_like(target_file, skip_rows)
 
         # --- 商品コード列での有効行抽出 ---
         item_code_col = mapping.get("品番")
@@ -109,16 +123,11 @@ def load_target_iraisho_files(mapping, reference_folder_path, extensions):
         # --- 空の一時DFを作成 ---
         create_temp_df = pd.DataFrame(index=range(len(target_df)))
 
-        processed_results.append((target_df, target_wb, target_ws, create_temp_df))
+        processed_results.append((basename, target_df, target_ws, create_temp_df))
 
     return processed_results
 
 
-
-import os
-import glob
-import pandas as pd
-from IPython.display import display
 
 def load_target_hokokusho_files(mapping, reference_folder_path, extensions):
     """
@@ -137,7 +146,7 @@ def load_target_hokokusho_files(mapping, reference_folder_path, extensions):
     Returns
     -------
     results : list of tuples
-        各要素は (target_df, target_wb, target_ws, create_temp_df)
+        各要素は (target_df, target_ws, create_temp_df)
     """
 
     file_name = mapping['書類名']
@@ -146,7 +155,8 @@ def load_target_hokokusho_files(mapping, reference_folder_path, extensions):
     # --- ファイル検索 ---
     for ext in extensions:
         file_pattern = os.path.join(reference_folder_path, f"*{file_name}*.{ext}")
-        target_files.extend(glob.glob(file_pattern))
+        matched_files = glob.glob(file_pattern)
+        target_files.extend(matched_files)
 
     print(f"検索結果: {target_files}")
 
@@ -159,19 +169,20 @@ def load_target_hokokusho_files(mapping, reference_folder_path, extensions):
 
     # --- 各ファイル処理 ---
     for target_file in target_files:
-        target_df, target_wb, target_ws = load_excel_like(target_file, skip_rows)
+        basename = os.path.splitext(os.path.basename(target_file))[0]
+        target_df, target_ws = load_excel_like(target_file, skip_rows)
         print(f"{len(target_df)} 行を読み込みました: {os.path.basename(target_file)}")
 
         # --- 空の一時DFを作成 ---
         create_temp_df = pd.DataFrame(index=range(len(target_df)))
 
-        results.append((target_df, target_wb, target_ws, create_temp_df))
+        results.append((basename, target_df, target_ws, create_temp_df))
 
     return results
 
 
 
-def load_excel_like(target_file, skip_rows):
+def load_excel_like(target_file: str, skip_rows: int) -> Tuple[pd.DataFrame, OpenpyxlWorkbook, OpenpyxlWorksheet]:
     """
     ExcelやCSVファイルを読み込み、
     DataFrame, Workbook, Worksheet の3つを返す。
@@ -183,7 +194,7 @@ def load_excel_like(target_file, skip_rows):
         df = pd.read_excel(target_file, skiprows=skip_rows, engine="openpyxl")
         wb = openpyxl.load_workbook(target_file, data_only=True)
         ws = wb.active
-        return df, wb, ws
+        return df, ws
 
     # === xls ===
     elif ext == "xls":
@@ -191,13 +202,13 @@ def load_excel_like(target_file, skip_rows):
             import xlrd
             df = pd.read_excel(target_file, skiprows=skip_rows, engine="xlrd")
             wb, ws = dataframe_to_workbook(df)
-            return df, wb, ws
+            return df, ws
         except Exception as e1:
             print(f"xls読込失敗({type(e1).__name__})、CSVとして再試行します。")
             try:
                 df = load_csv_safe(target_file, skip_rows)
                 wb, ws = dataframe_to_workbook(df)
-                return df, wb, ws
+                return df, ws
             except Exception as e2:
                 raise ValueError(
                     f"xls拡張子のファイルですが、Excel/CSVいずれでも開けませんでした: {target_file}\n"
@@ -208,14 +219,14 @@ def load_excel_like(target_file, skip_rows):
     elif ext == "csv":
         df = load_csv_safe(target_file, skip_rows)
         wb, ws = dataframe_to_workbook(df)
-        return df, wb, ws
+        return df, ws
 
     else:
         raise ValueError(f"未対応の拡張子: {ext}")
 
 
 
-def load_csv_safe(path, skip_rows=0):
+def load_csv_safe(path: str, skip_rows: int = 0) -> pd.DataFrame:
     """
     CSV/TSVファイルを確実に読み込む。
     区切り文字やエンコーディングを自動判定。
@@ -255,7 +266,7 @@ def load_csv_safe(path, skip_rows=0):
 
 
 
-def dataframe_to_workbook(df: pd.DataFrame):
+def dataframe_to_workbook(df: pd.DataFrame) -> Tuple[OpenpyxlWorkbook, OpenpyxlWorksheet]:
     """
     DataFrameをopenpyxlのWorkbookオブジェクトに変換する。
     CSVでもxls偽装ファイルでもセル参照を可能にするため。
@@ -311,12 +322,12 @@ def calc_formula(df: pd.DataFrame, val: str) -> pd.Series:
             # print(f"単一列参照として処理: {val}")
             return df[val]
         else:
-            # print(f"指定列が存在しません: {val}")
+            print(f"指定列が存在しません: {val}")
             return pd.Series([None]*len(df))
 
 
 
-def split_kikaku_series(df):
+def split_kikaku_series(df: pd.DataFrame) -> Tuple[pd.Series, pd.Series, pd.Series]:
     """
     規格列を分割して 4桁ロット、入数、合 の Series を返す関数。
 
@@ -368,7 +379,7 @@ def split_kikaku_series(df):
 
 
 
-def get_cell_value_by_cell_reference(input_ws, cell_ref: str) -> str:
+def get_cell_value_by_cell_reference(input_ws: Any, cell_ref: str) -> str:
     """
     セル番号で値を取得する関数
 
@@ -399,7 +410,7 @@ def get_cell_value_by_cell_reference(input_ws, cell_ref: str) -> str:
         return cell_ref
 
 
-def get_cell_value_by_column_reference(i, target_df, val):
+def get_cell_value_by_column_reference(i: int, target_df: pd.DataFrame, val: str) -> Optional[str]:
     """
     指定されたDataFrame列（val）から、i行目の値を取得して返す関数。
     key: ログ出力用の項目名
@@ -425,7 +436,7 @@ def get_cell_value_by_column_reference(i, target_df, val):
 
 
 
-def process_date_value(val, type):
+def process_date_value(val: Union[int, float, datetime, pd.Timestamp, str, pd.Series], type: int) -> Union[pd.Series, Optional[str]]:
     """
     日付形式を統一する関数。Seriesが渡された場合は再帰的に処理する。
 
@@ -486,7 +497,7 @@ def process_date_value(val, type):
 
 
 
-def make_lot_no(lot_4digits, exp_date=None):
+def make_lot_no(lot_4digits: Any, exp_date: Optional[Union[datetime, pd.Timestamp, str]] = None) -> Optional[str]:
     """
     4桁ロットと賞味期限（exp_date）から最終的なロットNoを作成する関数。
 
@@ -540,7 +551,14 @@ def make_lot_no(lot_4digits, exp_date=None):
 
 
 # 報告書データフレームと依頼書で製品の突合を行う関数
-def fill_lot_No(i, input_ws, start_row, folder_or_filename, vals_for_lot_no, report_df_narrowed):
+def fill_lot_No(
+    i: int,
+    input_ws: Any,
+    start_row: int,
+    folder_or_filename: str,
+    vals_for_lot_no: Dict[str, Any],
+    report_df_narrowed: pd.DataFrame,
+) -> Union[str, pd.Series]:
     # 突合に必要な情報：品番、賞味期限、総パック数
     # ロットNo作成に必要な情報：賞味期限、規格
 
@@ -618,7 +636,7 @@ def fill_lot_No(i, input_ws, start_row, folder_or_filename, vals_for_lot_no, rep
 
 
 # 賞味期限の形式を統一する関数
-def unify_date_format(lot_no, exp_date_lot_no=None):
+def unify_date_format(lot_no: Any, exp_date_lot_no: Optional[Any] = None) -> Optional[str]:
 
     print(f"賞味期限の形式を統一します。ロットNo:{lot_no}, 賞味期限:{exp_date_lot_no}")
 
@@ -717,7 +735,7 @@ def unify_date_format(lot_no, exp_date_lot_no=None):
 
     
 
-def add_prefix(x):
+def add_prefix(x: Any) -> Any:
     if pd.isna(x):
         return x
     s = str(x).strip()
@@ -735,7 +753,7 @@ def add_prefix(x):
 
 
 # 数字として解釈できる行だけTrueにするマスク
-def is_number(x):
+def is_number(x: Any) -> Union[bool, pd.Series]:
     if isinstance(x, pd.Series):
         return x.apply(is_number)
 
@@ -751,28 +769,32 @@ def is_number(x):
         return False
 
 
-
-
-
-def branching_constants(key, the_warehouse, all_mapping_dicts):
-    '''value: マッピング表の値
-    file_or_folder_name: 依頼書のファイル名またはフォルダ名
-
-    valueが（固定の値）＋「固定」の形式なら、（固定の値）を返す
-    そうでなければNoneを返す
-    '''
-
-
-    if key == "工場CD":
-        if "第一" == the_warehouse:
-            return all_mapping_dicts["daiichi_row"]["工場CD"]
-        elif "京都" == the_warehouse:
-            return all_mapping_dicts["kyoto_gyomu_row"]["工場CD"] # 依頼書では業務・通販・ヨシケイの区別を行わないのでどれでもよい
-        
-    elif key == "元保管場所CD":
-        if "第一" == the_warehouse:
-            return all_mapping_dicts["daiichi_row"]["元保管場所CD"]
-        elif "京都" == the_warehouse:
-            return all_mapping_dicts["kyoto_gyomu_row"]["元保管場所CD"]
-    
-    print(f"⚠️ {key}の固定値が設定されませんでした")
+#データベースに接続
+import pandas as pd
+import pymssql
+# ==============================
+# SQL Serverからデータ取得
+# ==============================
+def fetch_sql_df(server, database, username, password, sql_query):
+    """
+    server(str): SQL Serverのサーバー名またはIPアドレス
+    database(str): データベース名
+    username(str): ユーザー名
+    password(str): パスワード
+    sql_query(str): 実行するSQLクエリ
+    SQL Serverへ接続し、指定したSQLクエリを実行して結果をDataFrameで返す。
+    接続は都度開いて、取得後に閉じる。
+    """
+    # DB接続
+    conn = pymssql.connect(
+        server=server,
+        user=username,
+        password=password,
+        database=database,
+        charset="UTF-8",
+    )
+    # SQL実行→DataFrame化
+    df = pd.read_sql(sql_query, conn)
+    # コネクションを閉じる
+    conn.close()
+    return df

@@ -600,28 +600,6 @@ def fill_lot_No(
     matched = report_df_narrowed[cond] # ヒットした行を格納。列は特にカットされない
 
 
-    # 【cond &= ...の問題について】
-
-    #    品番
-    # 0  A123
-    # 1  B456
-    # 2  C789
-
-    # ここでreport_df_narrowed["品番"] == "A123"を評価すると
-
-    # 0     True
-    # 1    False
-    # 2    False
-    # Name: 品番, dtype: bool
-
-    # のようなpandas.Series（長さ3の真偽リスト）が返ってくる。ここで、１回目のループ
-    # cond &= (report_df_narrowed["品番"] == "A123")    をpythonは
-    # cond = cond & (report_df_narrowed["品番"] == "A123")  と解釈する。「左側の cond = True」と「右側の Series」でブール演算をしようとする。当然比較できないので、Series 全体を True として扱うことがある。結果的にcondはSeriesではなく１個のtrueになる。すると２回目のループでは
-    # cond &= (report_df_narrowed["賞味期限"] == "20251010")   このときcondは True なので、pandas Series との比較が成立せず、また同じことが繰り返される。最終的に
-    # matched = report_df_narrowed[cond]    で cond は True なので、report_df_narrowed 全体が matched に入ってしまう。
-    # だから    if matched.empty:   に流れない。
-
-
     print(f"ロットNo構築結果: \n{matched}")
 
     if matched.empty:
@@ -798,3 +776,20 @@ def fetch_sql_df(server, database, username, password, sql_query):
     # コネクションを閉じる
     conn.close()
     return df
+
+
+def remove_items_by_shohin_kbn(row: pd.Series,
+                         hinban_master_df: pd.DataFrame,
+                         shohin_kbn_cd_to_check: int = 3602,
+                         item_column: str = "品番",
+                         master_hinban_column: str = "HINBAN",
+                         master_shohin_kbn_column: str = "SHOHIN_KBN_CD") -> bool:
+    """
+    指定行の品番が、おせち商品区分に該当するか判定する。
+    """
+    hinban_value = row[item_column]
+    matched_rows = hinban_master_df[hinban_master_df[master_hinban_column] == hinban_value]
+    if not matched_rows.empty:
+        if matched_rows.iloc[0][master_shohin_kbn_column] == shohin_kbn_cd_to_check:
+            return True
+    return False
